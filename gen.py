@@ -122,8 +122,8 @@ if __name__ == "__main__":
                 assets_path = os.path.join(search_dir, 'GameFiles', 'Models', 'tmp')
             elif i > 0:
                 # parent dir
-                assets_path = os.path.join(search_dir, 'Modules', 'Model', 'GameFiles', 'Models', 'tmp')
-                project_path = os.path.join(search_dir, 'Modules', 'Godot')
+                assets_path = os.path.join(search_dir, 'GameFiles', 'Models')
+                project_path = os.path.join(search_dir, 'GameFiles', 'GodotGame')
             else:
                 # fallback, just use a default or None
                 assets_path = None
