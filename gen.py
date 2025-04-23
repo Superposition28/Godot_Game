@@ -30,10 +30,12 @@ res://assets
 
 """
 
-def write_scene_file(base_dir, relative_path, node_type="Node"):
+def write_scene_file(base_dir, relative_path, node_type="Node", children=None):
     """
     Creates a .tscn file at base_dir/relative_path.tscn
     Ensures all parent directories exist.
+    Optionally adds child scene instances.
+    children should be a list of dicts: [{'path': 'res://path/to/child.tscn', 'name': 'ChildNodeName'}]
     """
     print(f"\nWriting scene file: {base_dir} {relative_path}\n")
     path_parts = relative_path.split('/')
@@ -46,16 +48,33 @@ def write_scene_file(base_dir, relative_path, node_type="Node"):
     os.makedirs(os.path.dirname(scene_file_path), exist_ok=True)
     print(f"Creating directories for {scene_file_path}")
 
-    content = f"""[gd_scene load_steps=2 format=3]
-    [node name="{node_name}" type="{node_type}"]
-    """
+    # Build content string
+    content_lines = ["[gd_scene load_steps={} format=3]".format(len(children) + 1 if children else 1)] # +1 for the main node
+
+    # Add external resources for children
+    ext_resources = {}
+    if children:
+        for i, child in enumerate(children):
+            resource_id = f"ext_resource_{i+1}"
+            ext_resources[child['path']] = resource_id
+            content_lines.append(f'[ext_resource type="PackedScene" uid="{child[\'path\']}" id="{resource_id}"]')
+
+    # Add the main node definition
+    content_lines.append(f'[node name="{node_name}" type="{node_type}"]')
+
+    # Add child node instances
+    if children:
+        for child in children:
+            resource_id = ext_resources[child['path']]
+            content_lines.append(f'[node name="{child[\'name\']}" parent="." instance=ExtResource("{resource_id}")]')
+
+    content = "\n".join(content_lines) + "\n" # Add trailing newline
     print("content: ", content)
 
     with open(scene_file_path, 'w') as f:
         f.write(content)
         print(f"Writing scene file: {scene_file_path}")
     print(f"Scene written: {scene_file_path}")
-
 
 
 def create_godot_project(project_name, project_path, assets_path, godot_executable="godot"):
@@ -65,18 +84,22 @@ def create_godot_project(project_name, project_path, assets_path, godot_executab
     os.makedirs(assets_dir, exist_ok=True)
 
     # Create a basic project.godot
+    # Ensure the main scene path uses forward slashes for Godot compatibility
+    main_scene_godot_path = "res://Node4D.tscn"
     project_file_content = f"""
-    [gd_project_settings]
-    config_version=4
+    [gd_engine]
+    config_version=5
 
     [application]
     config/name="{project_name}"
-    run/main_scene="res://Node4D.tscn"
+    run/main_scene="{main_scene_godot_path}"
+    config/features=PackedStringArray("4.3", "Forward Plus")
+    config/icon="res://icon.svg"
     """
 
 
     with open(os.path.join(project_dir, "project.godot"), "w") as f:
-        f.write(project_file_content)
+        f.write(project_file_content.strip()) # Use strip() to remove leading/trailing whitespace
 
     # Copy assets
     if os.path.exists(assets_path):
@@ -91,15 +114,41 @@ def create_godot_project(project_name, project_path, assets_path, godot_executab
     else:
         print(f"Assets path does not exist: {assets_path}")
 
-    # Use a valid Godot node type for the root scene
-    write_scene_file(project_dir, "Node4D", "Node")
-    write_scene_file(project_dir, "Node4D/Node2D", "Node2D")
-    write_scene_file(project_dir, "Node4D/Node2D/Control", "Control")
-    write_scene_file(project_dir, "Node4D/Node3D", "Node3D")
+    print("write_scene_file")
 
-    # Run Godot CLI to import assets
+    # Define scene paths relative to the project root (res://)
+    node4d_scene_path = "Node4D"
+    node3d_scene_path = "Node4D/Node3D"
+    node2d_scene_path = "Node4D/Node2D"
+    control_scene_path = "Node4D/Node2D/Control"
+
+    # Create leaf scenes first
+    write_scene_file(project_dir, node3d_scene_path, "Node3D")
+    write_scene_file(project_dir, control_scene_path, "Control")
+
+    # Create Node2D scene and link Control scene as a child
+    node2d_children = [
+        {'path': f'res://{control_scene_path}.tscn', 'name': 'Control'}
+    ]
+    write_scene_file(project_dir, node2d_scene_path, "Node2D", children=node2d_children)
+
+    # Create Node4D (root) scene and link Node2D and Node3D scenes as children
+    node4d_children = [
+        {'path': f'res://{node2d_scene_path}.tscn', 'name': 'Node2D'},
+        {'path': f'res://{node3d_scene_path}.tscn', 'name': 'Node3D'}
+    ]
+    write_scene_file(project_dir, node4d_scene_path, "Node", children=node4d_children) # Use "Node" as base type
+
+
+    print("write_scene_file done")
+
+    # Run Godot CLI to import assets (if needed) and open the editor
+    # Using --headless might be better if you only need asset importing without opening the editor
+    # subprocess.run([godot_executable, "--headless", "--path", project_dir, "--import"])
+    # print("Godot asset import process initiated.")
+    # Or open the editor directly:
     subprocess.run([godot_executable, "--editor", "--path", project_dir])
-    print("Godot project initialized via CLI.")
+    print("Godot editor opened for project.")
 
 # Example usage:
 if __name__ == "__main__":
@@ -130,8 +179,8 @@ if __name__ == "__main__":
             break
         search_dir = os.path.dirname(search_dir)
 
-    #tmp path
-    assets_path = "A:\Dev\Games\TheSimpsonsGame\Modules\Model_Assets\GameFiles\Main\PS3_GAME\Blender_TMP_OUTPUT"
+    # tmp path
+    assets_path = ".\\Modules\\Model\\GameFiles\\Main\\PS3_GAME\\Blender_TMP_OUTPUT\\"
 
     if project_path is None or assets_path is None:
         print("Could not locate project.ini or determine assets_path.")
