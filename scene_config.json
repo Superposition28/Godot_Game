@@ -1,0 +1,33 @@
+[
+    {
+        "name": "Node4D",
+        "path": "Node4D.tscn",
+        "class": "Node",
+        "type": "scene",
+        "children": [
+        {"name": "Node2D", "path": "Node4D/Node2D.tscn"},
+            {"name": "Node3D", "path": "Node4D/Node3D.tscn"}
+        ]
+    },	
+    {
+        "name": "Node2D",
+        "path": "Node4D/Node2D.tscn",
+        "class": "Node2D",
+        "type": "scene",
+        "children": [
+            {"name": "Control", "path": "Node4D/Node2D/Control.tscn"}
+        ]
+    },
+    {
+        "name": "Node3D",
+        "path": "Node4D/Node3D.tscn",
+        "class": "Node3D",
+        "type": "scene"
+    },
+    {
+        "name": "Control",
+        "path": "Node4D/Node2D/Control.tscn",
+        "class": "Control",
+        "type": "scene"
+    }
+]
