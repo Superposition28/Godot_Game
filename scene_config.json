@@ -8,7 +8,7 @@
         {"name": "Node2D", "path": "Node4D/Node2D.tscn"},
             {"name": "Node3D", "path": "Node4D/Node3D.tscn"}
         ]
-    },	
+    },    
     {
         "name": "Node2D",
         "path": "Node4D/Node2D.tscn",
