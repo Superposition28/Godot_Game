@@ -31,12 +31,11 @@ res://assets
 
 """
 
-def create_godot_project(project_name: str, project_path: str, assets_path: str, script_path: str, json_path: str, asset_extension: str, godot_executable: str="godot") -> None:
+def create_godot_project(project_name: str, project_path: str, folders_to_copy: list, script_path: str, json_path: str, asset_extensions: list, godot_executable: str="godot") -> None:
     """Creates a Godot project with the given name and assets."""
     project_dir = os.path.join(project_path, project_name)
-    assets_dir = os.path.join(project_dir, "assets")
 
-    os.makedirs(assets_dir, exist_ok=True)
+    os.makedirs(project_dir, exist_ok=True)
 
     # Create a basic project.godot
     # Ensure the main scene path uses forward slashes for Godot compatibility
@@ -55,31 +54,32 @@ def create_godot_project(project_name: str, project_path: str, assets_path: str,
     with open(os.path.join(project_dir, "project.godot"), "w") as f:
         f.write(project_file_content.strip())
 
-    # Copy assets recursively, filtering by extension and maintaining structure
-    if os.path.exists(assets_path):
-        print(f"Copying assets with extension '{asset_extension}' from {assets_path} to {assets_dir}...")
-        copied_count = 0
-        for root, dirs, files in os.walk(assets_path):
-            for filename in files:
-                if filename.lower().endswith(asset_extension.lower()):
-                    source_file_path = os.path.join(root, filename)
-                    # Calculate relative path to maintain structure
-                    relative_path = os.path.relpath(source_file_path, assets_path)
-                    destination_file_path = os.path.join(assets_dir, relative_path)
+    # Copy specified folders recursively, filtering by extensions and maintaining structure
+    for folder_path in folders_to_copy:
+        if os.path.exists(folder_path):
+            print(f"Copying files with extensions {asset_extensions} from {folder_path} to {project_dir}...")
+            copied_count = 0
+            for root, dirs, files in os.walk(folder_path):
+                for filename in files:
+                    if any(filename.lower().endswith(ext.lower()) for ext in asset_extensions):
+                        source_file_path = os.path.join(root, filename)
+                        # Calculate relative path to maintain structure
+                        relative_path = os.path.relpath(source_file_path, folder_path)
+                        destination_file_path = os.path.join(project_dir, relative_path)
 
-                    # Ensure destination directory exists
-                    destination_dir = os.path.dirname(destination_file_path)
-                    os.makedirs(destination_dir, exist_ok=True)
+                        # Ensure destination directory exists
+                        destination_dir = os.path.dirname(destination_file_path)
+                        os.makedirs(destination_dir, exist_ok=True)
 
-                    # Copy the file
-                    shutil.copy2(source_file_path, destination_file_path)
-                    copied_count += 1
-        if copied_count > 0:
-            print(f"Assets copied: {copied_count} file(s).")
+                        # Copy the file
+                        shutil.copy2(source_file_path, destination_file_path)
+                        copied_count += 1
+            if copied_count > 0:
+                print(f"Files copied: {copied_count} file(s) from {folder_path}.")
+            else:
+                print(f"No files found with extensions {asset_extensions} in {folder_path}.")
         else:
-            print(f"No assets found with extension '{asset_extension}' in {assets_path}.")
-    else:
-        print(f"Assets path does not exist: {assets_path}")
+            print(f"Folder path does not exist: {folder_path}")
 
     # Copy scene_config.json into the project
     if os.path.exists(json_path):
@@ -107,6 +107,7 @@ def create_godot_project(project_name: str, project_path: str, assets_path: str,
         "--editor",
         "--path", project_dir,
         "--build-solutions",
+		"--verbose",
         "--script", script_res_path # Use the res:// path inside the project
     ])
 
@@ -122,39 +123,37 @@ if __name__ == "__main__":
     # if current dir contains project.ini set asset_path ./GameFiles/Models/tmp
     # else if parent dir contains project.ini set asset_path Modules/Model/GameFiles/Models/tmp
     project_path = None
-    assets_path = None
     search_dir = current_dir
     for i in range(3):
         potential_path = os.path.join(search_dir, 'project.ini')
         if os.path.exists(potential_path):
             project_path = search_dir
             if i == 0:
-                # current dir
-                assets_path = os.path.join(search_dir, 'GameFiles', 'Models', 'tmp')
+                folders_to_copy = [
+                    os.path.join(search_dir, "Modules", "Model", "GameFiles", "test"),
+                    os.path.join(current_dir, "Scripts")
+                ]
             elif i > 0:
                 # parent dir
-                assets_path = os.path.join(search_dir, 'GameFiles', 'Models')
-                project_path = os.path.join(search_dir, 'GameFiles', 'GodotGame')
+                folders_to_copy = [
+                    os.path.join(search_dir, "Modules", "Model", "GameFiles", "test"),
+                    os.path.join(current_dir, "Scripts")
+                ]
+                project_path = os.path.join(current_dir, 'GameFiles', 'GodotGame')
             else:
                 # fallback, just use a default or None
                 assets_path = None
             break
         search_dir = os.path.dirname(search_dir)
 
-    # tmp path
-    assets_path = ".\\Modules\\Model\\GameFiles\\test"
-
     json_path = os.path.join(current_dir, 'scene_config.json')
 
-    if project_path is None or assets_path is None or json_path is None:
-        print("Could not locate project.ini or determine assets_path or json_path.")
-    else:
-        create_godot_project(
-            project_name="Game",
-            project_path=project_path,
-            assets_path=assets_path,
-            script_path=os.path.join(current_dir, "EditorScript.gd"),
-            json_path=json_path,
-            asset_extension=".blend", # Specify the desired asset extension here
-            godot_executable="A:\\Godot_v4.4.1-stable_mono_win64\\Godot_v4.4.1-stable_mono_win64_console.exe"
-        )
+    create_godot_project(
+        project_name="Game",
+        project_path=project_path,
+        folders_to_copy=folders_to_copy,
+        script_path=os.path.join(current_dir, "_InitScript.gd"),
+        json_path=json_path,
+        asset_extensions=[".blend", ".gd", "png", "glb"],
+        godot_executable="A:\\Godot_v4.4.1-stable_mono_win64\\Godot_v4.4.1-stable_mono_win64_console.exe"
+    )
