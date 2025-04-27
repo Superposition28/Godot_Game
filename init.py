@@ -107,7 +107,7 @@ def create_godot_project(project_name: str, project_path: str, folders_to_copy: 
         "--editor",
         "--path", project_dir,
         "--build-solutions",
-		"--verbose",
+        "--verbose",
         "--script", script_res_path # Use the res:// path inside the project
     ])
 
